@@ -1,11 +1,7 @@
 import axios from 'axios'
 
 const client = axios.create({
-  baseURL: 'https://web-production-c177d.up.railway.app/',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
+  baseURL: 'https://web-production-c177d.up.railway.app/api',})
 
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token')

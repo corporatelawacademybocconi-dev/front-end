@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const BASE = 'https://web-production-c177d.up.railway.app/'
+const BASE = 'https://web-production-c177d.up.railway.app/api'
 
 export const login = async (username, password) => {
   const res = await axios.post(`${BASE}/token/`, { username, password })
