@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react'
 import { getProjects, createProject, deleteProject, updateProject, createTask, updateTask, deleteTask } from '../api/projects'
 import dayjs from 'dayjs'
 
+const EMPTY_PROJECT_FORM = { name: '', description: '', status: 'active', due_date: '' }
+
 export default function Projects() {
   const [projects, setProjects] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [selectedProject, setSelectedProject] = useState(null)
   const [taskForm, setTaskForm] = useState({ title: '', priority: 'medium', status: 'todo', due_date: '' })
-  const [form, setForm] = useState({ name: '', description: '', status: 'active', due_date: '' })
+  const [form, setForm] = useState(EMPTY_PROJECT_FORM)
+  const [editingProjectId, setEditingProjectId] = useState(null)
+  const [editProjectForm, setEditProjectForm] = useState(EMPTY_PROJECT_FORM)
 
   useEffect(() => {
     loadProjects()
@@ -64,6 +68,23 @@ export default function Projects() {
     setProjects(projects.map(p => p.id === updated.id ? updated : p))
   }
 
+  const startEditProject = (p) => {
+    setEditingProjectId(p.id)
+    setEditProjectForm({ name: p.name, description: p.description || '', status: p.status, due_date: p.due_date || '' })
+  }
+
+  const cancelEditProject = () => { setEditingProjectId(null); setEditProjectForm(EMPTY_PROJECT_FORM) }
+
+  const handleUpdateProject = async (e, id) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const res = await updateProject(id, editProjectForm)
+    const updated = res.data
+    setProjects(projects.map(p => p.id === id ? updated : p))
+    if (selectedProject?.id === id) setSelectedProject(updated)
+    cancelEditProject()
+  }
+
   return (
     <div style={{ display: 'flex', gap: '24px' }}>
       <div style={{ flex: 1 }}>
@@ -114,35 +135,55 @@ export default function Projects() {
             <div
               key={p.id}
               style={{ ...styles.card, ...(selectedProject?.id === p.id ? styles.cardSelected : {}) }}
-              onClick={() => setSelectedProject(p)}
+              onClick={() => editingProjectId !== p.id && setSelectedProject(p)}
             >
-              <div style={styles.cardHeader}>
-                <span style={styles.cardTitle}>{p.name}</span>
-                <span style={{ ...styles.badge, ...statusColor(p.status) }}>{p.status}</span>
-              </div>
-              {p.description && <p style={styles.desc}>{p.description}</p>}
-              {p.due_date && (
-                <p style={{ fontSize: '12px', color: '#6366f1', marginBottom: '8px' }}>
-                  📅 {dayjs(p.due_date).format('MMM D, YYYY')}
-                </p>
+              {editingProjectId === p.id ? (
+                <form onSubmit={e => handleUpdateProject(e, p.id)} onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <input style={styles.editInput} placeholder="Project name" value={editProjectForm.name} onChange={e => setEditProjectForm({ ...editProjectForm, name: e.target.value })} required />
+                  <input style={styles.editInput} placeholder="Description" value={editProjectForm.description} onChange={e => setEditProjectForm({ ...editProjectForm, description: e.target.value })} />
+                  <select style={styles.editInput} value={editProjectForm.status} onChange={e => setEditProjectForm({ ...editProjectForm, status: e.target.value })}>
+                    <option value="active">Active</option>
+                    <option value="on_hold">On Hold</option>
+                    <option value="completed">Completed</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                  <input style={styles.editInput} type="date" value={editProjectForm.due_date} onChange={e => setEditProjectForm({ ...editProjectForm, due_date: e.target.value })} />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button style={styles.btn} type="submit">Save</button>
+                    <button type="button" style={styles.cancelBtn} onClick={e => { e.stopPropagation(); cancelEditProject() }}>Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div style={styles.cardHeader}>
+                    <span style={styles.cardTitle}>{p.name}</span>
+                    <span style={{ ...styles.badge, ...statusColor(p.status) }}>{p.status}</span>
+                  </div>
+                  {p.description && <p style={styles.desc}>{p.description}</p>}
+                  {p.due_date && (
+                    <p style={{ fontSize: '12px', color: '#6366f1', marginBottom: '8px' }}>
+                      📅 {dayjs(p.due_date).format('MMM D, YYYY')}
+                    </p>
+                  )}
+                  <div style={styles.cardFooter}>
+                    <select
+                      style={styles.statusSelect}
+                      value={p.status}
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => handleStatusChange(p, e.target.value)}
+                    >
+                      <option value="active">Active</option>
+                      <option value="on_hold">On Hold</option>
+                      <option value="completed">Completed</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button style={styles.editProjectBtn} onClick={e => { e.stopPropagation(); startEditProject(p) }}>✎</button>
+                      <button style={styles.deleteBtn} onClick={e => { e.stopPropagation(); handleDelete(p.id) }}>Delete</button>
+                    </div>
+                  </div>
+                </>
               )}
-              <div style={styles.cardFooter}>
-                <select
-                  style={styles.statusSelect}
-                  value={p.status}
-                  onClick={e => e.stopPropagation()}
-                  onChange={e => handleStatusChange(p, e.target.value)}
-                >
-                  <option value="active">Active</option>
-                  <option value="on_hold">On Hold</option>
-                  <option value="completed">Completed</option>
-                  <option value="archived">Archived</option>
-                </select>
-                <button
-                  style={styles.deleteBtn}
-                  onClick={e => { e.stopPropagation(); handleDelete(p.id) }}
-                >Delete</button>
-              </div>
             </div>
           ))}
         </div>
@@ -250,8 +291,10 @@ const styles = {
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
   title: { fontSize: '20px', fontWeight: '600' },
   btn: { background: '#6366f1', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
+  cancelBtn: { background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', cursor: 'pointer' },
   form: { background: '#fff', padding: '24px', borderRadius: '12px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
   input: { padding: '10px 14px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '14px', outline: 'none', flex: 1 },
+  editInput: { padding: '8px 10px', borderRadius: '6px', border: '1px solid #e0e0e0', fontSize: '13px', outline: 'none', width: '100%', boxSizing: 'border-box' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' },
   card: { background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', border: '2px solid transparent' },
   cardSelected: { border: '2px solid #6366f1' },
@@ -261,6 +304,7 @@ const styles = {
   desc: { fontSize: '13px', color: '#666', marginBottom: '8px' },
   cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' },
   statusSelect: { padding: '4px 8px', borderRadius: '6px', border: '1px solid #e0e0e0', fontSize: '12px', cursor: 'pointer' },
+  editProjectBtn: { background: 'none', border: 'none', color: '#6366f1', fontSize: '14px', cursor: 'pointer' },
   deleteBtn: { background: 'none', border: 'none', color: '#e53e3e', fontSize: '12px', cursor: 'pointer' },
   empty: { color: '#999', textAlign: 'center', marginTop: '24px', fontSize: '14px' },
   taskPanel: { width: '360px', background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', alignSelf: 'flex-start', position: 'sticky', top: '24px' },

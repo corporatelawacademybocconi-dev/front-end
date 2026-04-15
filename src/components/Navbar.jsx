@@ -17,6 +17,7 @@ export default function Navbar() {
         <Link style={styles.link} to="/projects">Projects</Link>
         <Link style={styles.link} to="/contacts">Contacts</Link>
         <Link style={styles.link} to="/goals">Goals</Link>
+        <Link style={styles.link} to="/money">Money</Link>
         <button style={styles.logout} onClick={handleLogout}>Logout</button>
       </div>
     </nav>

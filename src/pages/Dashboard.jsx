@@ -1,22 +1,29 @@
 import { useState, useEffect } from 'react'
 import { getProjects, getTasks } from '../api/projects'
-import { getContacts } from '../api/contacts'
+import { getTopContacts } from '../api/contacts'
+import client from '../api/client'
 import { getGoals } from '../api/goals'
 import { Calendar, dayjsLocalizer } from 'react-big-calendar'
 import dayjs from 'dayjs'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 
+const localizer = dayjsLocalizer(dayjs)
+
 export default function Dashboard() {
   const [projects, setProjects] = useState([])
   const [tasks, setTasks] = useState([])
-  const [contacts, setContacts] = useState([])
+  const [topContacts, setTopContacts] = useState([])
+  const [contactCount, setContactCount] = useState(0)
   const [goals, setGoals] = useState([])
   const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
     getProjects().then(res => setProjects(res.data))
     getTasks().then(res => setTasks(res.data))
-    getContacts().then(res => setContacts(res.data))
+    getTopContacts(5).then(res => {
+      setTopContacts(res.data.results)
+      setContactCount(res.data.count)
+    })
     getGoals().then(res => setGoals(res.data))
   }, [])
 
@@ -50,46 +57,21 @@ export default function Dashboard() {
     archived: projects.filter(p => p.status === 'archived').length,
   }
   const totalProjects = projects.length || 1
-  // 🔥 Top contacts (score + recency)
-const topContacts = [...contacts]
-.map(c => {
-  const lastInteraction = c.interactions?.length
-    ? c.interactions.reduce((latest, i) =>
-        new Date(i.date) > new Date(latest.date) ? i : latest
-      )
-    : null
-
-  return {
-    ...c,
-    lastInteractionDate: lastInteraction?.date || null
-  }
-})
-.sort((a, b) => {
-  const scoreDiff = (b.relationship_score || 0) - (a.relationship_score || 0)
-  if (scoreDiff !== 0) return scoreDiff
-  return new Date(b.lastInteractionDate || 0) - new Date(a.lastInteractionDate || 0)
-})
-.slice(0, 5)
-
-// 🔥 Quick interaction (temporary simple version)
-const handleQuickInteraction = async (contact) => {
-try {
-  await fetch('http://127.0.0.1:8000/api/interactions/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  const handleQuickInteraction = async (contact) => {
+  try {
+    await client.post('/interactions/', {
       contact: contact.id,
-      type: 'note',
+      type: 'other',
       notes: 'Quick interaction',
-      date: new Date().toISOString()
+      date: dayjs().format('YYYY-MM-DD'),
     })
-  })
-
-  const res = await getContacts()
-  setContacts(res.data)
-} catch (err) {
-  console.error(err)
-}
+    getTopContacts(5).then(res => {
+      setTopContacts(res.data.results)
+      setContactCount(res.data.count)
+    })
+  } catch (err) {
+    console.error(err)
+  }
 }
   return (
     <div>
@@ -130,7 +112,7 @@ try {
           <div style={styles.statLabel}>Total tasks</div>
         </div>
         <div style={{ ...styles.statCard, borderTop: '3px solid #10b981' }}>
-          <div style={styles.statValue}>{contacts.length}</div>
+          <div style={styles.statValue}>{contactCount}</div>
           <div style={styles.statLabel}>Contacts</div>
         </div>
         

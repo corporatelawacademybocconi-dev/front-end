@@ -6,6 +6,7 @@ import Contacts from './pages/Contacts'
 import Goals from './pages/Goals'
 import PrivateRoute from './components/PrivateRoute'
 import Navbar from './components/Navbar'
+import MoneyTracker from './components/MoneyTracker'
 
 function Layout({ children }) {
   return (
@@ -39,6 +40,11 @@ export default function App() {
         <Route path="/goals" element={
           <PrivateRoute>
             <Layout><Goals /></Layout>
+          </PrivateRoute>
+        } />
+        <Route path="/money" element={
+          <PrivateRoute>
+            <Layout><MoneyTracker /></Layout>
           </PrivateRoute>
         } />
       </Routes>
