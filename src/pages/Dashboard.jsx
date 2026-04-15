@@ -5,7 +5,12 @@ import client from '../api/client'
 import { getGoals } from '../api/goals'
 import { Calendar, dayjsLocalizer } from 'react-big-calendar'
 import dayjs from 'dayjs'
+import localizedFormat from 'dayjs/plugin/localizedFormat'
+import localeData from 'dayjs/plugin/localeData'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
+
+dayjs.extend(localizedFormat)
+dayjs.extend(localeData)
 
 const localizer = dayjsLocalizer(dayjs)
 
