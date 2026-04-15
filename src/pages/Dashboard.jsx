@@ -7,10 +7,14 @@ import { Calendar, dayjsLocalizer } from 'react-big-calendar'
 import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 import localeData from 'dayjs/plugin/localeData'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 
 dayjs.extend(localizedFormat)
 dayjs.extend(localeData)
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 const localizer = dayjsLocalizer(dayjs)
 
