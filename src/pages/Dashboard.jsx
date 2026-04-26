@@ -19,13 +19,39 @@ dayjs.extend(timezone)
 
 const localizer = dayjsLocalizer(dayjs)
 
+// Calendar event colours by type
+const EVENT_COLORS = {
+  project: '#6366f1',
+  task: '#f59e0b',
+  goal: '#8b5cf6',
+}
+
+// Custom event renderer so each type has its own colour
+function CalendarEvent({ event }) {
+  return (
+    <span style={{
+      display: 'block',
+      background: event.color,
+      borderRadius: 4,
+      padding: '1px 5px',
+      fontSize: 11,
+      color: '#fff',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    }}>
+      {event.title}
+    </span>
+  )
+}
+
 export default function Dashboard() {
-  const [projects, setProjects]       = useState([])
-  const [tasks, setTasks]             = useState([])
+  const [projects, setProjects] = useState([])
+  const [tasks, setTasks] = useState([])
   const [topContacts, setTopContacts] = useState([])
   const [contactCount, setContactCount] = useState(0)
-  const [goals, setGoals]             = useState([])
-  const [activeTab, setActiveTab]     = useState('overview')
+  const [goals, setGoals] = useState([])
+  const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
     getProjects().then(res => setProjects(res.data ?? []))
@@ -38,33 +64,54 @@ export default function Dashboard() {
   }, [])
 
   const activeProjects = projects.filter(p => p.status === 'active')
-  const totalTasks     = projects.reduce((acc, p) => acc + (p.task_count || 0), 0)
-  const maxTasks       = Math.max(...projects.map(p => p.task_count || 0), 1)
+  const totalTasks = projects.reduce((acc, p) => acc + (p.task_count || 0), 0)
+  const maxTasks = Math.max(...projects.map(p => p.task_count || 0), 1)
 
+  // ── Calendar events — projects + tasks + goals ──────────────────────────
   const calendarEvents = [
-    ...tasks.filter(t => t.due_date).map(t => ({
-      title: t.title,
-      start: new Date(t.due_date),
-      end:   new Date(t.due_date),
-    })),
-    ...goals.filter(g => g.target_date).map(g => ({
-      title: `🎯 ${g.title}`,
-      start: new Date(g.target_date),
-      end:   new Date(g.target_date),
-    })),
+    // Projects with a due date
+    ...projects
+      .filter(p => p.due_date)
+      .map(p => ({
+        title: `📁 ${p.name}`,
+        start: new Date(p.due_date),
+        end: new Date(p.due_date),
+        color: EVENT_COLORS.project,
+        type: 'project',
+      })),
+    // Tasks with a due date
+    ...tasks
+      .filter(t => t.due_date)
+      .map(t => ({
+        title: t.title,
+        start: new Date(t.due_date),
+        end: new Date(t.due_date),
+        color: EVENT_COLORS.task,
+        type: 'task',
+      })),
+    // Goals with a target date
+    ...goals
+      .filter(g => g.target_date)
+      .map(g => ({
+        title: `🎯 ${g.title}`,
+        start: new Date(g.target_date),
+        end: new Date(g.target_date),
+        color: EVENT_COLORS.goal,
+        type: 'goal',
+      })),
   ]
 
   const timelineItems = [
-    ...projects.map(p => ({ type: 'project', label: p.name,   date: p.created_at,  status: p.status, color: '#6366f1' })),
-    ...goals.map(g =>    ({ type: 'goal',    label: g.title,  date: g.created_at,  status: g.status, color: '#8b5cf6' })),
-    ...tasks.filter(t => t.due_date).map(t => ({ type: 'task', label: t.title, date: t.due_date, status: t.status, color: '#f59e0b' })),
+    ...projects.map(p => ({ type: 'project', label: p.name, date: p.created_at, status: p.status, color: EVENT_COLORS.project })),
+    ...goals.map(g => ({ type: 'goal', label: g.title, date: g.created_at, status: g.status, color: EVENT_COLORS.goal })),
+    ...tasks.filter(t => t.due_date).map(t => ({ type: 'task', label: t.title, date: t.due_date, status: t.status, color: EVENT_COLORS.task })),
   ].sort((a, b) => new Date(a.date) - new Date(b.date))
 
   const statusCounts = {
-    active:    projects.filter(p => p.status === 'active').length,
-    on_hold:   projects.filter(p => p.status === 'on_hold').length,
+    active: projects.filter(p => p.status === 'active').length,
+    on_hold: projects.filter(p => p.status === 'on_hold').length,
     completed: projects.filter(p => p.status === 'completed').length,
-    archived:  projects.filter(p => p.status === 'archived').length,
+    archived: projects.filter(p => p.status === 'archived').length,
   }
   const totalProjects = projects.length || 1
 
@@ -91,7 +138,8 @@ export default function Dashboard() {
         .rbc-btn-group button { background:#fff !important; color:#444 !important; border:1px solid #e0e0e0 !important; padding:6px 12px !important; cursor:pointer !important; font-size:13px !important; }
         .rbc-btn-group button.rbc-active { background:#6366f1 !important; color:#fff !important; border-color:#6366f1 !important; }
         .rbc-toolbar-label { font-weight:600 !important; font-size:15px !important; }
-        .rbc-event { background:#6366f1 !important; border-radius:6px !important; border:none !important; font-size:12px !important; }
+        .rbc-event { background:transparent !important; border:none !important; padding:1px 2px !important; }
+        .rbc-event.rbc-selected { background:transparent !important; }
         .rbc-today { background:#eef2ff !important; }
         .dash-tab { padding:8px 20px; border-radius:8px; border:1px solid #e0e0e0; background:#fff; font-size:14px; cursor:pointer; color:#444; font-weight:500; transition:all 0.15s; }
         .dash-tab:hover:not(.dash-tab-active) { background:#f5f3ff; border-color:#c7d2fe; }
@@ -125,8 +173,8 @@ export default function Dashboard() {
       <div style={s.statsGrid}>
         {[
           { value: activeProjects.length, label: 'Active projects', color: '#6366f1' },
-          { value: totalTasks,            label: 'Total tasks',     color: '#f59e0b' },
-          { value: contactCount,          label: 'Contacts',        color: '#10b981' },
+          { value: totalTasks, label: 'Total tasks', color: '#f59e0b' },
+          { value: contactCount, label: 'Contacts', color: '#10b981' },
           { value: goals.filter(g => g.status === 'active').length, label: 'Active goals', color: '#8b5cf6' },
         ].map((stat, i) => (
           <div key={i} className="stat-card" style={{ borderTop: `3px solid ${stat.color}` }}>
@@ -169,10 +217,10 @@ export default function Dashboard() {
                 : (
                   <div>
                     {[
-                      { label: 'Active',    key: 'active',    color: '#6366f1' },
-                      { label: 'On hold',   key: 'on_hold',   color: '#f59e0b' },
+                      { label: 'Active', key: 'active', color: '#6366f1' },
+                      { label: 'On hold', key: 'on_hold', color: '#f59e0b' },
                       { label: 'Completed', key: 'completed', color: '#10b981' },
-                      { label: 'Archived',  key: 'archived',  color: '#94a3b8' },
+                      { label: 'Archived', key: 'archived', color: '#94a3b8' },
                     ].map(st => (
                       <div key={st.key} style={{ marginBottom: '10px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
@@ -232,7 +280,7 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '12px', fontWeight: '700', color: scoreColor(c.relationship_score) }}>{c.relationship_score || 0}</span>
                     {c.email && <a href={`mailto:${c.email}`} style={s.actionBtn}>✉</a>}
-                    {c.phone && <a href={`tel:${c.phone}`}   style={s.actionBtn}>📞</a>}
+                    {c.phone && <a href={`tel:${c.phone}`} style={s.actionBtn}>📞</a>}
                     <button style={s.actionBtn} onClick={() => handleQuickInteraction(c)}>+</button>
                   </div>
                 </div>
@@ -242,7 +290,7 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* MONEY TAB — embedded MoneyTracker widget */}
+      {/* MONEY TAB */}
       {activeTab === 'money' && (
         <div style={{ margin: '0 -8px' }}>
           <MoneyTracker />
@@ -252,8 +300,21 @@ export default function Dashboard() {
       {/* CALENDAR TAB */}
       {activeTab === 'calendar' && (
         <div style={s.section}>
-          <h3 style={s.sectionTitle}>Calendar — tasks &amp; goal deadlines</h3>
-          <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '16px' }}>Tasks and goals with due dates appear here.</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ ...s.sectionTitle, marginBottom: 4 }}>Calendar</h3>
+              <p style={{ fontSize: 13, color: '#94a3b8' }}>Projects, tasks and goal deadlines in one view.</p>
+            </div>
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              {[['📁 Projects', EVENT_COLORS.project], ['Tasks', EVENT_COLORS.task], ['🎯 Goals', EVENT_COLORS.goal]].map(([label, color]) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: color, display: 'inline-block' }} />
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
           <div style={{ height: 560 }}>
             <Calendar
               localizer={localizer}
@@ -261,8 +322,9 @@ export default function Dashboard() {
               startAccessor="start"
               endAccessor="end"
               style={{ height: '100%' }}
-              views={['month']}
+              views={['month', 'week', 'agenda']}
               defaultView="month"
+              components={{ event: CalendarEvent }}
             />
           </div>
         </div>
@@ -303,24 +365,24 @@ const scoreColor = (score) => {
 }
 
 const s = {
-  title:        { fontSize: '24px', fontWeight: '700', marginBottom: '4px' },
-  subtitle:     { fontSize: '14px', color: '#94a3b8', marginBottom: '24px' },
-  tabs:         { display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' },
-  statsGrid:    { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' },
-  statValue:    { fontSize: '32px', fontWeight: '700', color: '#111' },
-  statLabel:    { fontSize: '13px', color: '#888', marginTop: '4px' },
-  twoCol:       { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' },
-  section:      { background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '16px' },
+  title: { fontSize: '24px', fontWeight: '700', marginBottom: '4px' },
+  subtitle: { fontSize: '14px', color: '#94a3b8', marginBottom: '24px' },
+  tabs: { display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' },
+  statValue: { fontSize: '32px', fontWeight: '700', color: '#111' },
+  statLabel: { fontSize: '13px', color: '#888', marginTop: '4px' },
+  twoCol: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' },
+  section: { background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '16px' },
   sectionTitle: { fontSize: '15px', fontWeight: '600', marginBottom: '12px', color: '#111' },
-  avatar:       { width: '32px', height: '32px', borderRadius: '50%', background: '#eef2ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '11px', flexShrink: 0 },
-  actionBtn:    { padding: '4px 8px', borderRadius: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '13px', textDecoration: 'none', color: '#555' },
-  empty:        { fontSize: '13px', color: '#bbb', textAlign: 'center', padding: '16px 0' },
+  avatar: { width: '32px', height: '32px', borderRadius: '50%', background: '#eef2ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '11px', flexShrink: 0 },
+  actionBtn: { padding: '4px 8px', borderRadius: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '13px', textDecoration: 'none', color: '#555' },
+  empty: { fontSize: '13px', color: '#bbb', textAlign: 'center', padding: '16px 0' },
   timelineLine: { position: 'absolute', left: '11px', top: 0, bottom: 0, width: '2px', background: '#f0f0f0' },
   timelineItem: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', position: 'relative' },
-  timelineDot:  { width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0, zIndex: 1 },
+  timelineDot: { width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0, zIndex: 1 },
   timelineContent: { flex: 1 },
   timelineType: { fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#999', letterSpacing: '0.05em' },
   timelineLabel: { fontSize: '14px', fontWeight: '500' },
   timelineDate: { fontSize: '12px', color: '#999', marginTop: '2px' },
-  badge:        { fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '999px' },
+  badge: { fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '999px' },
 }
