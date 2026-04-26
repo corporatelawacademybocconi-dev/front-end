@@ -30,9 +30,11 @@ export default function Contacts() {
   const [showForm, setShowForm] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [confirmDeleteCompany, setConfirmDeleteCompany] = useState(null)
+  const [deleteCompanyError, setDeleteCompanyError] = useState('')   // FIX 1
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState(EMPTY_FORM)
   const [activeView, setActiveView] = useState('All')
+  const [expandedNotes, setExpandedNotes] = useState({})            // FIX 2
 
   const [search, setSearch] = useState('')
   const [companyFilter, setCompanyFilter] = useState('')
@@ -45,6 +47,12 @@ export default function Contacts() {
 
   const [newCompanyName, setNewCompanyName] = useState('')
   const [form, setForm] = useState(EMPTY_FORM)
+
+  // FIX 3: count contacts per company from loaded data
+  const contactCountByCompany = contacts.reduce((acc, c) => {
+    if (c.company) acc[c.company] = (acc[c.company] || 0) + 1
+    return acc
+  }, {})
 
   useEffect(() => {
     getCompanies().then(res => setCompanies(res.data))
@@ -93,16 +101,25 @@ export default function Contacts() {
     } catch (err) { console.error('Company error:', err.response?.data) }
   }
 
+  // FIX 1: clear error when opening a new modal, show inline error instead of alert
   const handleDeleteCompany = async (id) => {
     try {
       await deleteCompany(id)
       setCompanies(prev => prev.filter(c => c.id !== id))
       setConfirmDeleteCompany(null)
+      setDeleteCompanyError('')
       fetchContacts({ search: debouncedSearch, company: debouncedCompany, role: debouncedRole, page })
     } catch (err) {
-      alert('Cannot delete company — it may still have contacts assigned to it.')
-      setConfirmDeleteCompany(null)
+      const serverMsg = err.response?.data?.detail || err.response?.data?.error
+      setDeleteCompanyError(
+        serverMsg || 'This company still has contacts assigned. Reassign or delete them first.'
+      )
     }
+  }
+
+  const openDeleteCompany = (companyObj) => {
+    setDeleteCompanyError('')          // reset error from previous attempt
+    setConfirmDeleteCompany(companyObj)
   }
 
   const handleDelete = async (id) => {
@@ -131,6 +148,9 @@ export default function Contacts() {
     } catch (err) { console.error('Update error:', err.response?.data) }
   }
 
+  // FIX 2: toggle notes expansion per contact
+  const toggleNotes = (id) => setExpandedNotes(prev => ({ ...prev, [id]: !prev[id] }))
+
   const viewContacts = activeView === 'Associates'
     ? contacts.filter(isAssociate)
     : activeView === 'Alumni'
@@ -151,8 +171,9 @@ export default function Contacts() {
   return (
     <div>
       <style>{`
-        .contact-card { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#fff; border-radius:10px; margin-top:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); transition:box-shadow 0.15s; }
+        .contact-card { display:flex; flex-direction:column; padding:12px 16px; background:#fff; border-radius:10px; margin-top:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); transition:box-shadow 0.15s; }
         .contact-card:hover { box-shadow:0 3px 10px rgba(0,0,0,0.09); }
+        .contact-card-row { display:flex; justify-content:space-between; align-items:center; }
         .c-input { padding:9px 12px; border-radius:8px; border:1px solid #e0e0e0; font-size:14px; outline:none; transition:border-color 0.15s; width:100%; }
         .c-input:focus { border-color:#6366f1; }
         .view-tab { padding:7px 18px; border-radius:8px; border:1px solid #e0e0e0; background:#fff; font-size:13px; cursor:pointer; color:#555; font-weight:500; transition:all 0.15s; }
@@ -167,6 +188,10 @@ export default function Contacts() {
         .edit-btn:hover { color:#6366f1; background:#eef2ff; }
         .del-btn { background:none; border:none; color:#94a3b8; cursor:pointer; font-size:14px; padding:4px 6px; border-radius:6px; transition:all 0.15s; }
         .del-btn:hover { color:#ef4444; background:#fee2e2; }
+        .notes-toggle { background:none; border:none; cursor:pointer; font-size:11px; color:#94a3b8; padding:4px 6px; border-radius:6px; transition:all 0.15s; display:inline-flex; align-items:center; gap:3px; }
+        .notes-toggle:hover { color:#6366f1; background:#eef2ff; }
+        .notes-box { margin-top:8px; padding:8px 12px; background:#f8fafc; border-left:3px solid #e0e7ff; border-radius:0 6px 6px 0; font-size:13px; color:#555; line-height:1.5; white-space:pre-wrap; }
+        .error-banner { background:#fee2e2; color:#b91c1c; border-radius:8px; padding:10px 14px; font-size:13px; margin-bottom:12px; }
       `}</style>
 
       <div style={s.header}>
@@ -197,9 +222,14 @@ export default function Contacts() {
             <input className="c-input" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
             <input className="c-input" placeholder="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
             <input className="c-input" placeholder="Role" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} />
+            {/* FIX 3: company dropdown with contact count */}
             <select className="c-input" value={form.company} onChange={e => setForm({ ...form, company: e.target.value })}>
               <option value="">Select Company</option>
-              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {companies.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name}{contactCountByCompany[c.id] ? ` (${contactCountByCompany[c.id]})` : ''}
+                </option>
+              ))}
             </select>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -213,9 +243,14 @@ export default function Contacts() {
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <input className="c-input" placeholder="Search…" value={search} onChange={handleSearch} style={{ maxWidth: '220px' }} />
-        <select className="c-input" value={companyFilter} onChange={handleCompany} style={{ maxWidth: '180px' }}>
+        {/* FIX 3: company filter dropdown with contact count */}
+        <select className="c-input" value={companyFilter} onChange={handleCompany} style={{ maxWidth: '220px' }}>
           <option value="">All Companies</option>
-          {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {companies.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.name}{contactCountByCompany[c.id] ? ` (${contactCountByCompany[c.id]})` : ''}
+            </option>
+          ))}
         </select>
         <input className="c-input" placeholder="Filter by role…" value={roleFilter} onChange={handleRole} style={{ maxWidth: '180px' }} />
       </div>
@@ -230,15 +265,17 @@ export default function Contacts() {
 
       {!loading && Object.entries(grouped).map(([company, roles]) => {
         const companyObj = companies.find(c => c.name === company)
+        const companyCount = Object.values(roles).flat().length
         return (
           <div key={company} className="company-group">
             <div className="company-heading">
-              <span>{company}</span>
+              {/* FIX 3: count shown next to company name in the group header */}
+              <span>{company} <span style={{ fontSize: '11px', fontWeight: 400, opacity: 0.65, textTransform: 'none', letterSpacing: 0 }}>({companyCount})</span></span>
               {companyObj && (
                 <button
                   className="del-btn"
                   title="Delete company"
-                  onClick={() => setConfirmDeleteCompany(companyObj)}
+                  onClick={() => openDeleteCompany(companyObj)}
                   style={{ fontSize: '12px', opacity: 0.6 }}
                 >
                   🗑 Delete company
@@ -260,7 +297,11 @@ export default function Contacts() {
                           <input className="c-input" placeholder="Role" value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })} />
                           <select className="c-input" value={editForm.company} onChange={e => setEditForm({ ...editForm, company: e.target.value })}>
                             <option value="">No Company</option>
-                            {companies.map(co => <option key={co.id} value={co.id}>{co.name}</option>)}
+                            {companies.map(co => (
+                              <option key={co.id} value={co.id}>
+                                {co.name}{contactCountByCompany[co.id] ? ` (${contactCountByCompany[co.id]})` : ''}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <textarea className="c-input" placeholder="Notes" rows={2} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} style={{ marginTop: '8px' }} />
@@ -271,26 +312,38 @@ export default function Contacts() {
                       </form>
                     ) : (
                       <div className="contact-card">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
-                          <div style={s.avatar}>{initials(c)}</div>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: '600', fontSize: '14px', color: '#111' }}>{c.full_name}</div>
-                            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '1px' }}>
-                              {c.email && <span>{c.email}</span>}
-                              {c.email && c.phone && <span> · </span>}
-                              {c.phone && <span>{c.phone}</span>}
+                        <div className="contact-card-row">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                            <div style={s.avatar}>{initials(c)}</div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: '600', fontSize: '14px', color: '#111' }}>{c.full_name}</div>
+                              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '1px' }}>
+                                {c.email && <span>{c.email}</span>}
+                                {c.email && c.phone && <span> · </span>}
+                                {c.phone && <span>{c.phone}</span>}
+                              </div>
                             </div>
                           </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                            <span style={{ ...s.scoreBadge, background: scoreColor(c.relationship_score) + '18', color: scoreColor(c.relationship_score) }}>
+                              {c.relationship_score || 0}
+                            </span>
+                            {/* FIX 2: notes toggle button — only shown if notes exist */}
+                            {c.notes && (
+                              <button className="notes-toggle" onClick={() => toggleNotes(c.id)} title={expandedNotes[c.id] ? 'Hide notes' : 'Show notes'}>
+                                📝 {expandedNotes[c.id] ? '▲' : '▼'}
+                              </button>
+                            )}
+                            {c.email && <a href={`mailto:${c.email}`} className="action-btn">✉</a>}
+                            {c.phone && <a href={`tel:${c.phone}`} className="action-btn">📞</a>}
+                            <button className="edit-btn" onClick={() => startEdit(c)}>✎</button>
+                            <button className="del-btn" onClick={() => setConfirmDelete(c)}>✕</button>
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                          <span style={{ ...s.scoreBadge, background: scoreColor(c.relationship_score) + '18', color: scoreColor(c.relationship_score) }}>
-                            {c.relationship_score || 0}
-                          </span>
-                          {c.email && <a href={`mailto:${c.email}`} className="action-btn">✉</a>}
-                          {c.phone && <a href={`tel:${c.phone}`} className="action-btn">📞</a>}
-                          <button className="edit-btn" onClick={() => startEdit(c)}>✎</button>
-                          <button className="del-btn" onClick={() => setConfirmDelete(c)}>✕</button>
-                        </div>
+                        {/* FIX 2: collapsible notes panel */}
+                        {c.notes && expandedNotes[c.id] && (
+                          <div className="notes-box">{c.notes}</div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -323,7 +376,7 @@ export default function Contacts() {
         </div>
       )}
 
-      {/* Delete company modal */}
+      {/* Delete company modal — FIX 1: inline error, modal stays open on failure */}
       {confirmDeleteCompany && (
         <div style={s.overlay}>
           <div style={s.modal}>
@@ -331,12 +384,16 @@ export default function Contacts() {
             <p style={{ fontSize: '14px', color: '#555', marginBottom: '4px' }}>
               "{confirmDeleteCompany.name}" will be permanently removed.
             </p>
-            <p style={{ fontSize: '13px', color: '#f59e0b', marginBottom: '20px' }}>
+            <p style={{ fontSize: '13px', color: '#f59e0b', marginBottom: '12px' }}>
               ⚠️ Contacts assigned to this company will become unassigned.
             </p>
+            {/* FIX 1: error shown inline so modal stays open and user can read it */}
+            {deleteCompanyError && (
+              <div className="error-banner">{deleteCompanyError}</div>
+            )}
             <div style={{ display: 'flex', gap: '10px' }}>
               <button style={s.deleteConfirmBtn} onClick={() => handleDeleteCompany(confirmDeleteCompany.id)}>Delete</button>
-              <button style={s.cancelBtn} onClick={() => setConfirmDeleteCompany(null)}>Cancel</button>
+              <button style={s.cancelBtn} onClick={() => { setConfirmDeleteCompany(null); setDeleteCompanyError('') }}>Cancel</button>
             </div>
           </div>
         </div>
@@ -365,5 +422,5 @@ const s = {
   avatar: { width: '34px', height: '34px', borderRadius: '50%', background: '#eef2ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '12px', flexShrink: 0 },
   scoreBadge: { fontSize: '12px', fontWeight: '700', padding: '2px 8px', borderRadius: '999px' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modal: { background: '#fff', borderRadius: '14px', padding: '28px', maxWidth: '360px', width: '90%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' },
+  modal: { background: '#fff', borderRadius: '14px', padding: '28px', maxWidth: '380px', width: '90%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' },
 }
