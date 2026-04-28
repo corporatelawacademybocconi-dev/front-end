@@ -2,14 +2,12 @@ import { useMemo, useRef, useState } from "react";
 import "./MoneyTracker.css";
 
 const CATEGORIES = [
-    "Food",
-    "Transport",
-    "Housing",
-    "Health",
-    "Shopping",
-    "Entertainment",
-    "Salary",
-    "Freelance",
+    "Canva",
+    "Equipment",
+    "Subscriptions",
+    "Marketing",
+    "Quotas",
+    "Freelance + developping",
     "Other",
 ];
 
@@ -36,7 +34,7 @@ export default function MoneyTracker() {
     const [form, setForm] = useState({
         desc: "",
         amount: "",
-        cat: "Food",
+        cat: "Canva",
         date: getTodayLocalDate(),
     });
 

@@ -5,18 +5,18 @@ import dayjs from 'dayjs'
 // ─── Event templates ────────────────────────────────────────────────────────
 
 const EVENT_TEMPLATES = {
-  conference: {
+  podcast: {
     name: 'Podcast',
     icon: '🎥',
     description: 'Multi-session public event',
     tasks: [
-      { title: 'Book venue', priority: 'high' },
-      { title: 'Set up registration page', priority: 'high' },
-      { title: 'Invite speakers', priority: 'high' },
-      { title: 'Arrange catering', priority: 'medium' },
-      { title: 'Design print materials', priority: 'medium' },
-      { title: 'Send attendee reminders', priority: 'low' },
-      { title: 'Post-event survey', priority: 'low' },
+      { title: 'Topic' },
+      { title: 'Ospiti' },
+      { title: 'Data' },
+      { title: 'Location' },
+      { title: 'Grafica' },
+      { title: 'Upload' },
+      { title: 'Post' },
     ],
   },
   workshop: {
@@ -24,36 +24,41 @@ const EVENT_TEMPLATES = {
     icon: '🛠',
     description: 'Hands-on learning session',
     tasks: [
-      { title: 'Define learning objectives', priority: 'high' },
-      { title: 'Prepare materials & exercises', priority: 'high' },
-      { title: 'Book room / platform', priority: 'medium' },
-      { title: 'Send invitations', priority: 'medium' },
-      { title: 'Prepare feedback form', priority: 'low' },
+      { title: 'Topic' },
+      { title: 'Studio & Partner' },
+      { title: 'Data' },
+      { title: 'Selezione Partecipanti' },
+      { title: 'Post' },
     ],
   },
-  meetup: {
+  conferences: {
     name: 'Conferences',
     icon: '🎙️',
     description: 'Casual community gathering',
     tasks: [
-      { title: 'Choose venue', priority: 'medium' },
-      { title: 'Create event page', priority: 'medium' },
-      { title: 'Promote on socials', priority: 'medium' },
-      { title: 'Confirm headcount', priority: 'low' },
+      { title: 'Topic' },
+      { title: 'Ospiti' },
+      { title: 'Moderatore' },
+      { title: 'Data' },
+      { title: 'Call di coordinamento' },
+      { title: 'Allestimento' },
+      { title: 'Grafica' },
+      { title: 'Post' },
+      { title: 'Locandine fisiche' },
+      { title: 'Ringraziamenti' }
     ],
   },
-  launch: {
+  social_events: {
     name: 'Social Events',
     icon: '🥂',
     description: 'Product or campaign go-live',
     tasks: [
-      { title: 'Finalize deliverable', priority: 'urgent' },
-      { title: 'QA & review', priority: 'urgent' },
-      { title: 'Prepare announcement', priority: 'high' },
-      { title: 'Brief stakeholders', priority: 'high' },
-      { title: 'Schedule social posts', priority: 'medium' },
-      { title: 'Monitor post-launch', priority: 'medium' },
-      { title: 'Collect feedback', priority: 'low' },
+      { title: 'Titolo' },
+      { title: 'Data' },
+      { title: 'Location' },
+      { title: 'Spesa Budget' },
+      { title: 'Grafica' },
+      { title: 'Pubblicizzazione' }
     ],
   },
 }
