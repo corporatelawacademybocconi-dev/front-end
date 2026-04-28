@@ -6,8 +6,8 @@ import dayjs from 'dayjs'
 
 const EVENT_TEMPLATES = {
   conference: {
-    name: 'Conference',
-    icon: '🎙',
+    name: 'Podcast',
+    icon: '🎥',
     description: 'Multi-session public event',
     tasks: [
       { title: 'Book venue', priority: 'high' },
@@ -32,8 +32,8 @@ const EVENT_TEMPLATES = {
     ],
   },
   meetup: {
-    name: 'Meetup',
-    icon: '☕',
+    name: 'Conferences',
+    icon: '🎙️',
     description: 'Casual community gathering',
     tasks: [
       { title: 'Choose venue', priority: 'medium' },
@@ -43,8 +43,8 @@ const EVENT_TEMPLATES = {
     ],
   },
   launch: {
-    name: 'Launch',
-    icon: '🚀',
+    name: 'Social Events',
+    icon: '🥂',
     description: 'Product or campaign go-live',
     tasks: [
       { title: 'Finalize deliverable', priority: 'urgent' },
