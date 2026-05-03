@@ -8,8 +8,24 @@ const CATEGORIES = [
     "Marketing",
     "Quotas",
     "Freelance + developping",
-    "Other",
+    "Debt",
 ];
+
+const STORAGE_KEY = "money_tracker_txs";
+
+function loadTxs() {
+    try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch {
+        return [];
+    }
+}
+
+function saveTxs(txs) {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(txs));
+    } catch { }
+}
 
 function getTodayLocalDate() {
     const now = new Date();
@@ -29,7 +45,13 @@ export default function MoneyTracker() {
 
     const [txType, setTxType] = useState("income");
     const [filter, setFilter] = useState("all");
-    const [txs, setTxs] = useState([]);
+    const [txs, setTxs] = useState(() => {
+        const stored = loadTxs();
+        if (stored.length > 0) {
+            nextId.current = Math.max(...stored.map((t) => t.id)) + 1;
+        }
+        return stored;
+    });
 
     const [form, setForm] = useState({
         desc: "",
@@ -98,7 +120,11 @@ export default function MoneyTracker() {
             date: form.date || getTodayLocalDate(),
         };
 
-        setTxs((prev) => [newTx, ...prev]);
+        setTxs((prev) => {
+            const updated = [newTx, ...prev];
+            saveTxs(updated);
+            return updated;
+        });
 
         setForm((prev) => ({
             ...prev,
@@ -108,7 +134,11 @@ export default function MoneyTracker() {
     }
 
     function handleDelete(id) {
-        setTxs((prev) => prev.filter((tx) => tx.id !== id));
+        setTxs((prev) => {
+            const updated = prev.filter((tx) => tx.id !== id);
+            saveTxs(updated);
+            return updated;
+        });
     }
 
     const balanceColor =
